@@ -15,6 +15,7 @@
 package controllers
 
 import (
+	v1alpha1 "github.com/agent-substrate/substrate/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,6 +24,14 @@ import (
 
 // createActorDeploymentSpec creates a deployment spec for an actor.
 func createActorDeploymentSpec(name string, replicas int32, wpName string, ateomImage string) *appsv1.DeploymentSpec {
+	return createActorDeploymentSpecForRuntime(name, replicas, wpName, ateomImage, v1alpha1.RuntimeTypeGVisor)
+}
+
+// createActorDeploymentSpecForRuntime creates a deployment spec for an actor
+// with the specified runtime backend.
+func createActorDeploymentSpecForRuntime(name string, replicas int32, wpName string, ateomImage string, runtimeType v1alpha1.RuntimeType) *appsv1.DeploymentSpec {
+	secCtx := ateomSecurityContext(runtimeType)
+
 	ds := &appsv1.DeploymentSpec{
 		Replicas: &replicas,
 		Selector: &metav1.LabelSelector{
@@ -45,11 +54,7 @@ func createActorDeploymentSpec(name string, replicas int32, wpName string, ateom
 							"-pod-namespace=$(POD_NAMESPACE)",
 							"-pod-name=$(POD_NAME)",
 						},
-						SecurityContext: &corev1.SecurityContext{
-							Privileged: ptr.To(true),
-							RunAsUser:  ptr.To(int64(0)),
-							RunAsGroup: ptr.To(int64(0)),
-						},
+						SecurityContext: secCtx,
 						Env: []corev1.EnvVar{
 							{
 								Name: "POD_NAMESPACE",
@@ -98,4 +103,34 @@ func createActorDeploymentSpec(name string, replicas int32, wpName string, ateom
 		ds.Template.ObjectMeta.Labels["ate.dev/worker-pool"] = wpName
 	}
 	return ds
+}
+
+// ateomSecurityContext returns the appropriate security context for the ateom
+// container based on the runtime type.
+//
+// gVisor requires full privileged mode (for network namespace manipulation
+// and sandboxed execution).
+//
+// CRIU needs SYS_PTRACE and SYS_ADMIN capabilities for checkpoint/restore
+// but does not require full privileged mode.
+func ateomSecurityContext(runtimeType v1alpha1.RuntimeType) *corev1.SecurityContext {
+	if runtimeType == v1alpha1.RuntimeTypeCRIU {
+		return &corev1.SecurityContext{
+			RunAsUser:  ptr.To(int64(0)),
+			RunAsGroup: ptr.To(int64(0)),
+			Capabilities: &corev1.Capabilities{
+				Add: []corev1.Capability{
+					"SYS_PTRACE",
+					"SYS_ADMIN",
+				},
+			},
+		}
+	}
+
+	// Default: gVisor — full privileged mode
+	return &corev1.SecurityContext{
+		Privileged: ptr.To(true),
+		RunAsUser:  ptr.To(int64(0)),
+		RunAsGroup: ptr.To(int64(0)),
+	}
 }

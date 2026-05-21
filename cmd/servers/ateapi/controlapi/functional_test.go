@@ -337,7 +337,7 @@ func createTemplate(t *testing.T, tc *testContext, ns string) {
 			Namespace: ns,
 		},
 		Spec: atev1alpha1.ActorTemplateSpec{
-			Runsc: atev1alpha1.RunscConfig{
+			Runsc: &atev1alpha1.RunscConfig{
 				AMD64: &atev1alpha1.RunscPlatformConfig{
 					URL:        "gs://gvisor/releases/nightly/2026-05-19/x86_64/runsc",
 					SHA256Hash: "a397be1abc2420d26bce6c70e6e2ff96c73aaaab929756c56f5e2089ea842b63",

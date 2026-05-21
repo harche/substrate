@@ -51,6 +51,18 @@ type Container struct {
 	Env []corev1.EnvVar `json:"env,omitempty"`
 }
 
+// RuntimeType specifies the container runtime backend for worker pods.
+// +kubebuilder:validation:Enum=gvisor;criu
+type RuntimeType string
+
+const (
+	// RuntimeTypeGVisor uses gVisor (runsc) for sandboxed execution.
+	RuntimeTypeGVisor RuntimeType = "gvisor"
+
+	// RuntimeTypeCRIU uses regular Linux containers with CRIU for checkpoint/restore.
+	RuntimeTypeCRIU RuntimeType = "criu"
+)
+
 type SnapshotsConfig struct {
 	// Location to store snapshots in.
 	// +required
@@ -82,10 +94,19 @@ type ActorTemplateSpec struct {
 	// +required
 	WorkerPoolRef corev1.ObjectReference `json:"workerPoolRef"`
 
-	// Parameters for fetching the runsc binary to use.
+	// RuntimeType selects the container runtime backend.
+	// "gvisor" (default) uses gVisor/runsc with full sandbox isolation.
+	// "criu" uses regular Linux containers with CRIU for checkpoint/restore.
 	//
-	// +required
-	Runsc RunscConfig `json:"runsc,omitempty"`
+	// +optional
+	// +kubebuilder:default=gvisor
+	RuntimeType RuntimeType `json:"runtimeType,omitempty"`
+
+	// Parameters for fetching the runsc binary to use.
+	// Required when runtimeType is "gvisor", ignored for "criu".
+	//
+	// +optional
+	Runsc *RunscConfig `json:"runsc,omitempty"`
 }
 
 type GCPAuthenticationConfig struct {

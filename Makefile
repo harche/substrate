@@ -47,6 +47,10 @@ build-atectl:
 build-atenet:
 	$(GO) build -o $(BINDIR)/atenet ./cmd/servers/atenet
 
+.PHONY: build-ateom-criu
+build-ateom-criu:
+	$(GO) build -o $(BINDIR)/ateom-criu ./cmd/servers/ateom-criu
+
 .PHONY: build-demos
 build-demos:
 	$(KO) build ./cmd/demos/counter

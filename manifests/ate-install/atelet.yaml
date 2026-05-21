@@ -91,6 +91,33 @@ spec:
         volumeMounts:
         - name: run-ateom
           mountPath: /run/ateom-gvisor
+      # To use CRIU-based checkpoint/restore instead of gVisor, add the
+      # ateom-criu sidecar container to worker pod specs. The ateom-criu
+      # container needs SYS_PTRACE and SYS_ADMIN capabilities (not full
+      # privileged mode). Example:
+      #
+      # - name: ateom-criu
+      #   image: ko://github.com/agent-substrate/substrate/cmd/servers/ateom-criu
+      #   args:
+      #   - --pod-namespace=$(POD_NAMESPACE)
+      #   - --pod-name=$(POD_NAME)
+      #   securityContext:
+      #     runAsUser: 0
+      #     runAsGroup: 0
+      #     capabilities:
+      #       add: ["SYS_PTRACE", "SYS_ADMIN"]
+      #   env:
+      #   - name: POD_NAMESPACE
+      #     valueFrom:
+      #       fieldRef:
+      #         fieldPath: metadata.namespace
+      #   - name: POD_NAME
+      #     valueFrom:
+      #       fieldRef:
+      #         fieldPath: metadata.name
+      #   volumeMounts:
+      #   - name: run-ateom
+      #     mountPath: /run/ateom-gvisor
       volumes:
       - name: run-ateom
         hostPath:

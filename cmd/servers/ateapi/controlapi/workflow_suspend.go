@@ -117,22 +117,24 @@ func (s *CallAteletSuspendStep) Execute(ctx context.Context, input *SuspendInput
 	client := ateletpb.NewAteomHerderClient(ateletConn)
 
 	runscCfg := &ateletpb.RunscConfig{}
-	if state.ActorTemplate.Spec.Runsc.AMD64 != nil {
-		runscCfg.Amd64 = &ateletpb.RunscPlatformConfig{
-			Sha256Hash: state.ActorTemplate.Spec.Runsc.AMD64.SHA256Hash,
-			Url:        state.ActorTemplate.Spec.Runsc.AMD64.URL,
+	if state.ActorTemplate.Spec.Runsc != nil {
+		if state.ActorTemplate.Spec.Runsc.AMD64 != nil {
+			runscCfg.Amd64 = &ateletpb.RunscPlatformConfig{
+				Sha256Hash: state.ActorTemplate.Spec.Runsc.AMD64.SHA256Hash,
+				Url:        state.ActorTemplate.Spec.Runsc.AMD64.URL,
+			}
 		}
-	}
-	if state.ActorTemplate.Spec.Runsc.ARM64 != nil {
-		runscCfg.Arm64 = &ateletpb.RunscPlatformConfig{
-			Sha256Hash: state.ActorTemplate.Spec.Runsc.ARM64.SHA256Hash,
-			Url:        state.ActorTemplate.Spec.Runsc.ARM64.URL,
+		if state.ActorTemplate.Spec.Runsc.ARM64 != nil {
+			runscCfg.Arm64 = &ateletpb.RunscPlatformConfig{
+				Sha256Hash: state.ActorTemplate.Spec.Runsc.ARM64.SHA256Hash,
+				Url:        state.ActorTemplate.Spec.Runsc.ARM64.URL,
+			}
 		}
-	}
-	if state.ActorTemplate.Spec.Runsc.Authentication.GCP != nil {
-		authnCfg := &ateletpb.AuthenticationConfig{}
-		authnCfg.Gcp = &ateletpb.GCPAuthenticationConfig{Use: true}
-		runscCfg.Authentication = authnCfg
+		if state.ActorTemplate.Spec.Runsc.Authentication.GCP != nil {
+			authnCfg := &ateletpb.AuthenticationConfig{}
+			authnCfg.Gcp = &ateletpb.GCPAuthenticationConfig{Use: true}
+			runscCfg.Authentication = authnCfg
+		}
 	}
 
 	req := &ateletpb.CheckpointRequest{
