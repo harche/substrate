@@ -138,37 +138,40 @@ func main() {
 		slog.String("workerpool-ca-certs", *workerpoolCACerts),
 	)
 
-	tlsConfig := &tls.Config{
-		MinVersion: tls.VersionTLS12,
-	}
-	if *redisCACerts != "" {
-		ca, err := os.ReadFile(*redisCACerts)
-		if err != nil {
-			slog.ErrorContext(ctx, "Failed to read Redis CA cert", slog.Any("err", err))
-			os.Exit(1)
+	var tlsConfig *tls.Config
+	if *redisCACerts != "" || *redisTLSServerName != "" || *redisClientCert != "" {
+		tlsConfig = &tls.Config{
+			MinVersion: tls.VersionTLS12,
 		}
-		caPool := x509.NewCertPool()
-		if !caPool.AppendCertsFromPEM(ca) {
-			slog.ErrorContext(ctx, "Failed to parse Redis CA cert")
-			os.Exit(1)
+		if *redisCACerts != "" {
+			ca, err := os.ReadFile(*redisCACerts)
+			if err != nil {
+				slog.ErrorContext(ctx, "Failed to read Redis CA cert", slog.Any("err", err))
+				os.Exit(1)
+			}
+			caPool := x509.NewCertPool()
+			if !caPool.AppendCertsFromPEM(ca) {
+				slog.ErrorContext(ctx, "Failed to parse Redis CA cert")
+				os.Exit(1)
+			}
+			slog.InfoContext(ctx, "Using custom CA cert for Redis", slog.String("path", *redisCACerts))
+			tlsConfig.RootCAs = caPool
 		}
-		slog.InfoContext(ctx, "Using custom CA cert for Redis", slog.String("path", *redisCACerts))
-		tlsConfig.RootCAs = caPool
-	}
-
-	if *redisTLSServerName != "" {
-		tlsConfig.ServerName = *redisTLSServerName
-		slog.InfoContext(ctx, "Using custom ServerName for Redis TLS verification", slog.String("name", *redisTLSServerName))
-	}
-
-	if *redisClientCert != "" {
-		cert, err := credbundle.Parse(*redisClientCert)
-		if err != nil {
-			slog.ErrorContext(ctx, "Failed to parse Redis client credential bundle", slog.Any("err", err))
-			os.Exit(1)
+		if *redisTLSServerName != "" {
+			tlsConfig.ServerName = *redisTLSServerName
+			slog.InfoContext(ctx, "Using custom ServerName for Redis TLS verification", slog.String("name", *redisTLSServerName))
 		}
-		tlsConfig.Certificates = []tls.Certificate{*cert}
-		slog.InfoContext(ctx, "Using client TLS certificate for Redis/Valkey", slog.String("path", *redisClientCert))
+		if *redisClientCert != "" {
+			cert, err := credbundle.Parse(*redisClientCert)
+			if err != nil {
+				slog.ErrorContext(ctx, "Failed to parse Redis client credential bundle", slog.Any("err", err))
+				os.Exit(1)
+			}
+			tlsConfig.Certificates = []tls.Certificate{*cert}
+			slog.InfoContext(ctx, "Using client TLS certificate for Redis/Valkey", slog.String("path", *redisClientCert))
+		}
+	} else {
+		slog.InfoContext(ctx, "No Redis TLS configuration — connecting without TLS")
 	}
 
 	clusterOpts := &redis.ClusterOptions{

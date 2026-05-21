@@ -7,11 +7,12 @@
 # The resulting image contains all binaries under /usr/local/bin/.
 # Individual deployments select which binary to run via container command.
 
-FROM registry.access.redhat.com/ubi9/go-toolset:1.22 AS builder
+FROM registry.access.redhat.com/ubi9/go-toolset:latest AS builder
 
 USER root
 WORKDIR /build
 COPY go.mod go.sum ./
+ENV GOTOOLCHAIN=auto
 RUN go mod download
 
 COPY . .
