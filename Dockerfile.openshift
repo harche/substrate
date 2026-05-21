@@ -1,0 +1,37 @@
+# Multi-binary build for agent-substrate on OpenShift.
+# Builds all server components from a single Go module.
+#
+# Usage with OpenShift BuildConfig (binary source upload):
+#   oc start-build substrate --from-dir=. --follow
+#
+# The resulting image contains all binaries under /usr/local/bin/.
+# Individual deployments select which binary to run via container command.
+
+FROM registry.access.redhat.com/ubi9/go-toolset:1.22 AS builder
+
+USER root
+WORKDIR /build
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN CGO_ENABLED=0 go build -o /out/ateapi ./cmd/servers/ateapi && \
+    CGO_ENABLED=0 go build -o /out/atecontroller ./cmd/servers/atecontroller && \
+    CGO_ENABLED=0 go build -o /out/atelet ./cmd/servers/atelet && \
+    CGO_ENABLED=0 go build -o /out/atenet ./cmd/servers/atenet && \
+    CGO_ENABLED=0 go build -o /out/ateom-criu ./cmd/servers/ateom-criu
+
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+
+# Install runc and criu for ateom-criu runtime
+RUN microdnf install -y criu runc shadow-utils && microdnf clean all
+
+COPY --from=builder /out/ateapi /usr/local/bin/ateapi
+COPY --from=builder /out/atecontroller /usr/local/bin/atecontroller
+COPY --from=builder /out/atelet /usr/local/bin/atelet
+COPY --from=builder /out/atenet /usr/local/bin/atenet
+COPY --from=builder /out/ateom-criu /usr/local/bin/ateom-criu
+
+USER 65534
+ENTRYPOINT ["/usr/local/bin/ateapi"]
