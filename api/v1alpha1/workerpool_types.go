@@ -26,6 +26,19 @@ type WorkerPoolSpec struct {
 	// AteomImage is the ateom container image to deploy as workers.
 	// +required
 	AteomImage string `json:"ateomImage"`
+
+	// RuntimeType selects the container runtime backend for this worker pool.
+	// Defaults to "gvisor" if not specified.
+	//
+	// +optional
+	// +kubebuilder:default=gvisor
+	RuntimeType RuntimeType `json:"runtimeType,omitempty"`
+
+	// RuntimeClassName is the Kubernetes RuntimeClass to set on worker pods.
+	// Only used when RuntimeType is "kata".
+	//
+	// +optional
+	RuntimeClassName string `json:"runtimeClassName,omitempty"`
 }
 
 type WorkerPoolStatus struct {

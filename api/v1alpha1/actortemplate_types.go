@@ -19,6 +19,18 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// RuntimeType specifies which container runtime backend to use for workers.
+// +kubebuilder:validation:Enum=gvisor;kata
+type RuntimeType string
+
+const (
+	// RuntimeTypeGVisor uses gVisor (runsc) for sandbox isolation.
+	RuntimeTypeGVisor RuntimeType = "gvisor"
+
+	// RuntimeTypeKata uses Kata Containers (micro-VM) for sandbox isolation.
+	RuntimeTypeKata RuntimeType = "kata"
+)
+
 type PhaseType string
 
 // Define your phases as constants
@@ -57,6 +69,15 @@ type SnapshotsConfig struct {
 	Location string `json:"location"`
 }
 
+// KataConfig holds configuration specific to Kata Containers runtime.
+type KataConfig struct {
+	// RuntimeClassName is the Kubernetes RuntimeClass to use for Kata VM pods.
+	// Defaults to "kata" if not specified.
+	//
+	// +optional
+	RuntimeClassName string `json:"runtimeClassName,omitempty"`
+}
+
 // ActorTemplateSpec defined desired spec of an actor.
 type ActorTemplateSpec struct {
 	// PauseImage is the container to use as the root sandbox container.
@@ -82,10 +103,24 @@ type ActorTemplateSpec struct {
 	// +required
 	WorkerPoolRef corev1.ObjectReference `json:"workerPoolRef"`
 
-	// Parameters for fetching the runsc binary to use.
+	// RuntimeType selects the container runtime backend.
+	// Defaults to "gvisor" if not specified.
 	//
-	// +required
+	// +optional
+	// +kubebuilder:default=gvisor
+	RuntimeType RuntimeType `json:"runtimeType,omitempty"`
+
+	// Parameters for fetching the runsc binary to use.
+	// Only required when RuntimeType is "gvisor".
+	//
+	// +optional
 	Runsc RunscConfig `json:"runsc,omitempty"`
+
+	// Kata-specific configuration.
+	// Only used when RuntimeType is "kata".
+	//
+	// +optional
+	Kata *KataConfig `json:"kata,omitempty"`
 }
 
 type GCPAuthenticationConfig struct {

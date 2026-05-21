@@ -91,8 +91,33 @@ spec:
         volumeMounts:
         - name: run-ateom
           mountPath: /run/ateom-gvisor
+      - name: ateom-kata
+        image: ko://github.com/agent-substrate/substrate/cmd/servers/ateom-kata
+        args:
+        - --pod-namespace=$(POD_NAMESPACE)
+        - --pod-name=$(POD_NAME)
+        - --containerd-socket=/run/containerd/containerd.sock
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        volumeMounts:
+        - name: run-ateom
+          mountPath: /run/ateom-gvisor
+        - name: containerd-socket
+          mountPath: /run/containerd/containerd.sock
+          readOnly: true
       volumes:
       - name: run-ateom
         hostPath:
           path: /run/ateom-gvisor
           type: DirectoryOrCreate
+      - name: containerd-socket
+        hostPath:
+          path: /run/containerd/containerd.sock
+          type: Socket

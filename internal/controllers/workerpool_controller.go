@@ -86,7 +86,7 @@ func (r *WorkerPoolReconciler) reconcileWorkerPool(ctx context.Context, wp *atev
 					Name:      depName,
 					Namespace: wp.Namespace,
 				},
-				Spec: *createActorDeploymentSpec(wp.Name, wp.Spec.Replicas, wp.Name, wp.Spec.AteomImage),
+				Spec: *createActorDeploymentSpecWithRuntime(wp.Name, wp.Spec.Replicas, wp.Name, wp.Spec.AteomImage, wp.Spec.RuntimeType, wp.Spec.RuntimeClassName),
 			}
 
 			// 2. Setting the OwnerReference ensures Kubernetes garbage collects the deployment
@@ -105,7 +105,7 @@ func (r *WorkerPoolReconciler) reconcileWorkerPool(ctx context.Context, wp *atev
 	}
 
 	// TODO: Quick and dirty, stop using cmp.Diff
-	wantSpec := *createActorDeploymentSpec(wp.Name, wp.Spec.Replicas, wp.Name, wp.Spec.AteomImage)
+	wantSpec := *createActorDeploymentSpecWithRuntime(wp.Name, wp.Spec.Replicas, wp.Name, wp.Spec.AteomImage, wp.Spec.RuntimeType, wp.Spec.RuntimeClassName)
 	if diff := cmp.Diff(existingDeployment.Spec, wantSpec); diff != "" {
 		existingDeployment.Spec = wantSpec
 		if err := r.Update(ctx, existingDeployment); err != nil {

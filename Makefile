@@ -39,6 +39,10 @@ build-images:
 	$(KO) build ./cmd/servers/podcertcontroller
 	$(KO) build ./cmd/servers/atenet
 
+.PHONY: build-ateom-kata
+build-ateom-kata:
+	$(KO) build ./cmd/servers/ateom-kata
+
 .PHONY: build-atectl
 build-atectl:
 	$(GO) build -o $(ATECTL) ./cmd/kubectl-ate
