@@ -38,6 +38,40 @@ func ateomCommand(runtimeType v1alpha1.RuntimeType) []string {
 	}
 }
 
+func ateomPodSecurityContext(runtimeType v1alpha1.RuntimeType) *corev1.PodSecurityContext {
+	if runtimeType == v1alpha1.RuntimeTypeCRIU {
+		return nil // CRIU doesn't need root pod context
+	}
+	return &corev1.PodSecurityContext{
+		RunAsUser:  ptr.To(int64(0)),
+		RunAsGroup: ptr.To(int64(0)),
+	}
+}
+
+func ateomVolumes(runtimeType v1alpha1.RuntimeType) []corev1.Volume {
+	if runtimeType == v1alpha1.RuntimeTypeCRIU {
+		return []corev1.Volume{
+			{
+				Name: "run-ateom",
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			},
+		}
+	}
+	return []corev1.Volume{
+		{
+			Name: "run-ateom",
+			VolumeSource: corev1.VolumeSource{
+				HostPath: &corev1.HostPathVolumeSource{
+					Path: "/run/ateom-gvisor",
+					Type: ptr.To(corev1.HostPathDirectoryOrCreate),
+				},
+			},
+		},
+	}
+}
+
 func createActorDeploymentSpecForRuntime(name string, replicas int32, wpName string, ateomImage string, runtimeType v1alpha1.RuntimeType) *appsv1.DeploymentSpec {
 	secCtx := ateomSecurityContext(runtimeType)
 	cmd := ateomCommand(runtimeType)
@@ -92,21 +126,8 @@ func createActorDeploymentSpecForRuntime(name string, replicas int32, wpName str
 						},
 					},
 				},
-				SecurityContext: &corev1.PodSecurityContext{
-					RunAsUser:  ptr.To(int64(0)),
-					RunAsGroup: ptr.To(int64(0)),
-				},
-				Volumes: []corev1.Volume{
-					{
-						Name: "run-ateom",
-						VolumeSource: corev1.VolumeSource{
-							HostPath: &corev1.HostPathVolumeSource{
-								Path: "/run/ateom-gvisor",
-								Type: ptr.To(corev1.HostPathDirectoryOrCreate),
-							},
-						},
-					},
-				},
+				SecurityContext: ateomPodSecurityContext(runtimeType),
+				Volumes:         ateomVolumes(runtimeType),
 			},
 		},
 	}
