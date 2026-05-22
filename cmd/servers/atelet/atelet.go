@@ -379,7 +379,13 @@ func (s *AteomHerder) Run(ctx context.Context, req *ateletpb.RunRequest) (*atele
 		return nil, fmt.Errorf("while resetting actor dirs: %w", err)
 	}
 
-	netnsPath := ateompath.AteomNetNSPath(req.GetTargetAteomNamespace(), req.GetTargetAteomName())
+	// In CRIU mode, containers use the worker pod's network directly —
+	// no custom network namespace needed. Only gVisor needs a dedicated netns.
+	var netnsPath string
+	criuSockPath := filepath.Join(ateompath.BasePath, "ateom-criu.sock")
+	if _, err := os.Stat(criuSockPath); err != nil {
+		netnsPath = ateompath.AteomNetNSPath(req.GetTargetAteomNamespace(), req.GetTargetAteomName())
+	}
 
 	g, gCtx := errgroup.WithContext(ctx)
 
@@ -628,7 +634,11 @@ func (s *AteomHerder) Restore(ctx context.Context, req *ateletpb.RestoreRequest)
 		return nil, err
 	}
 
-	netnsPath := ateompath.AteomNetNSPath(req.GetTargetAteomNamespace(), req.GetTargetAteomName())
+	var netnsPath string
+	criuSock := filepath.Join(ateompath.BasePath, "ateom-criu.sock")
+	if _, err := os.Stat(criuSock); err != nil {
+		netnsPath = ateompath.AteomNetNSPath(req.GetTargetAteomNamespace(), req.GetTargetAteomName())
+	}
 
 	g, gCtx = errgroup.WithContext(ctx)
 
