@@ -62,7 +62,7 @@ func (r *WorkerPoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	if err := r.reconcileWorkerPool(ctx, wp); err != nil {
-		log.Error(err, "Failed to reconcile worker pool, err: %v", err)
+		log.Error(err, "Failed to reconcile worker pool")
 		return ctrl.Result{}, err
 	}
 
