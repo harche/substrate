@@ -298,6 +298,11 @@ func (s *AteomHerder) fetchRunsc(ctx context.Context, cfg *ateletpb.RunscConfig)
 		platCfg = cfg.GetArm64()
 	}
 
+	if platCfg == nil || platCfg.GetUrl() == "" {
+		slog.InfoContext(ctx, "No runsc binary configured — skipping download (CRIU mode)")
+		return "", nil
+	}
+
 	localPath := ateompath.RunSCBinaryPath(platCfg.GetSha256Hash())
 	_, err := os.Stat(localPath)
 	if err == nil { // EQUALS nil
