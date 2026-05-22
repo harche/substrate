@@ -111,55 +111,8 @@ func prepareOCIDirectory(ctx context.Context, pullCache *memorypullcache.MemoryP
 			Readonly: false,
 		},
 		Hostname: "runsc",
-		Mounts: []specs.Mount{
-			{
-				Destination: "/proc",
-				Type:        "proc",
-				Source:      "proc",
-			},
-			{
-				Destination: "/dev",
-				Type:        "tmpfs",
-				Source:      "tmpfs",
-			},
-			{
-				Destination: "/sys",
-				Type:        "sysfs",
-				Source:      "sysfs",
-				Options: []string{
-					"nosuid",
-					"noexec",
-					"nodev",
-					"ro",
-				},
-			},
-			{
-				Destination: "/etc/resolv.conf",
-				Type:        "bind",
-				Source:      "/etc/resolv.conf",
-				Options:     []string{"ro"},
-			},
-		},
-		Linux: &specs.Linux{
-			Namespaces: []specs.LinuxNamespace{
-				{
-					Type: "pid",
-				},
-				{
-					Type: "network",
-					Path: netns, // Will be created by ateom
-				},
-				{
-					Type: "ipc",
-				},
-				{
-					Type: "uts",
-				},
-				{
-					Type: "mount",
-				},
-			},
-		},
+		Mounts: ociMounts(netns),
+		Linux:  ociLinuxConfig(netns),
 		Annotations: annotations,
 	}
 	ociSpecBytes, err := json.MarshalIndent(ociSpec, "", "  ")
@@ -172,6 +125,40 @@ func prepareOCIDirectory(ctx context.Context, pullCache *memorypullcache.MemoryP
 	}
 
 	return nil
+}
+
+func ociMounts(netns string) []specs.Mount {
+	mounts := []specs.Mount{
+		{Destination: "/proc", Type: "proc", Source: "proc"},
+		{Destination: "/dev", Type: "tmpfs", Source: "tmpfs"},
+		{Destination: "/sys", Type: "sysfs", Source: "sysfs", Options: []string{"nosuid", "noexec", "nodev", "ro"}},
+	}
+	// Only bind-mount resolv.conf in gVisor mode (custom netns).
+	// In CRIU mode (no custom netns), the container inherits pod DNS.
+	if netns != "" {
+		mounts = append(mounts, specs.Mount{
+			Destination: "/etc/resolv.conf",
+			Type:        "bind",
+			Source:      "/etc/resolv.conf",
+			Options:     []string{"ro"},
+		})
+	}
+	return mounts
+}
+
+func ociLinuxConfig(netns string) *specs.Linux {
+	namespaces := []specs.LinuxNamespace{
+		{Type: "pid"},
+		{Type: "ipc"},
+		{Type: "uts"},
+		{Type: "mount"},
+	}
+	// Only add a network namespace in gVisor mode.
+	// In CRIU mode, the container inherits the pod's network.
+	if netns != "" {
+		namespaces = append(namespaces, specs.LinuxNamespace{Type: "network", Path: netns})
+	}
+	return &specs.Linux{Namespaces: namespaces}
 }
 
 func untar(ctx context.Context, tarData io.Reader, rootPath string) error {
