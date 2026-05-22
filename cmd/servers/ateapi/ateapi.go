@@ -254,11 +254,18 @@ func main() {
 		slog.InfoContext(ctx, "Using custom CA for workerpool clients", slog.String("path", *workerpoolCACerts))
 	}
 
-	serverCreds := credentials.NewTLS(&tls.Config{
-		GetCertificate: credbundle.Loader(*grpcServerCredBundle),
-		ClientAuth:     tls.VerifyClientCertIfGiven,
-		ClientCAs:      clientCACertPool,
-	})
+	var grpcOpts []grpc.ServerOption
+	if *grpcServerCredBundle != "" {
+		serverCreds := credentials.NewTLS(&tls.Config{
+			GetCertificate: credbundle.Loader(*grpcServerCredBundle),
+			ClientAuth:     tls.VerifyClientCertIfGiven,
+			ClientCAs:      clientCACertPool,
+		})
+		grpcOpts = append(grpcOpts, grpc.Creds(serverCreds))
+		slog.InfoContext(ctx, "gRPC server using TLS", slog.String("credBundle", *grpcServerCredBundle))
+	} else {
+		slog.InfoContext(ctx, "gRPC server running without TLS (no cred bundle)")
+	}
 	redisPersistence := ateredis.NewPersistence(redisClient)
 
 	ateFactory := externalversions.NewSharedInformerFactory(ateClient, 0)
@@ -292,11 +299,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	mux := grpc.NewServer(
-		grpc.Creds(serverCreds),
+	grpcOpts = append(grpcOpts,
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),
 		grpc.UnaryInterceptor(ateinterceptors.ServerUnaryInterceptor),
 	)
+	mux := grpc.NewServer(grpcOpts...)
 	reflection.Register(mux)
 	ateapipb.RegisterControlServer(mux, sm)
 	ateapipb.RegisterSessionIdentityServer(mux, sessionIdentitySrv)
