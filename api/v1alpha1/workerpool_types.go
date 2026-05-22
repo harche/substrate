@@ -26,6 +26,11 @@ type WorkerPoolSpec struct {
 	// AteomImage is the ateom container image to deploy as workers.
 	// +required
 	AteomImage string `json:"ateomImage"`
+
+	// RuntimeType selects the sandbox runtime backend for workers.
+	// "gvisor" (default) or "criu".
+	// +optional
+	RuntimeType RuntimeType `json:"runtimeType,omitempty"`
 }
 
 type WorkerPoolStatus struct {

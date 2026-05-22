@@ -29,8 +29,18 @@ func createActorDeploymentSpec(name string, replicas int32, wpName string, ateom
 
 // createActorDeploymentSpecForRuntime creates a deployment spec for an actor
 // with the specified runtime backend.
+func ateomCommand(runtimeType v1alpha1.RuntimeType) []string {
+	switch runtimeType {
+	case v1alpha1.RuntimeTypeCRIU:
+		return []string{"/usr/local/bin/ateom-criu"}
+	default:
+		return nil // use image ENTRYPOINT (ateom-gvisor)
+	}
+}
+
 func createActorDeploymentSpecForRuntime(name string, replicas int32, wpName string, ateomImage string, runtimeType v1alpha1.RuntimeType) *appsv1.DeploymentSpec {
 	secCtx := ateomSecurityContext(runtimeType)
+	cmd := ateomCommand(runtimeType)
 
 	ds := &appsv1.DeploymentSpec{
 		Replicas: &replicas,
@@ -48,8 +58,9 @@ func createActorDeploymentSpecForRuntime(name string, replicas int32, wpName str
 			Spec: corev1.PodSpec{
 				Containers: []corev1.Container{
 					{
-						Name:  "ateom",
-						Image: ateomImage,
+						Name:    "ateom",
+						Image:   ateomImage,
+						Command: cmd,
 						Args: []string{
 							"-pod-namespace=$(POD_NAMESPACE)",
 							"-pod-name=$(POD_NAME)",
