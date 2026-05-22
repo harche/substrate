@@ -134,6 +134,8 @@ func (c *MemoryPullCache) Fetch(ctx context.Context, ref string) (io.ReadCloser,
 		if c.gcpAuthenticator != nil {
 			remoteOptions = append(remoteOptions, remote.WithAuth(c.gcpAuthenticator))
 		}
+	} else {
+		remoteOptions = append(remoteOptions, remote.WithAuthFromKeychain(authn.DefaultKeychain))
 	}
 
 	img, err := remote.Image(parsedRef, remoteOptions...)
