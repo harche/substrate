@@ -135,9 +135,9 @@ func (w *ActorWorkflow) ResumeActor(ctx context.Context, id string, boot bool) (
 	}
 	state := &ResumeState{}
 
-	// Acquire lock and get the timeout context for the workflow
-	// Lock TTL is 7 seconds, with 2 seconds padding for workflow timeout
-	ctx, releaseLock, err := w.acquireActorLock(ctx, id, 30*time.Second, 2*time.Second)
+	// Acquire lock with generous timeout for first-time image pulls.
+	// Cold starts may pull ~1GB sandbox images from the registry.
+	ctx, releaseLock, err := w.acquireActorLock(ctx, id, 5*time.Minute, 5*time.Second)
 	if err != nil {
 		return nil, err
 	}
