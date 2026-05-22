@@ -21,6 +21,7 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"path/filepath"
 
 	"cloud.google.com/go/compute/metadata"
 	"github.com/agent-substrate/substrate/internal/ateinterceptors"
@@ -73,18 +74,14 @@ func do(ctx context.Context) error {
 		}
 	}()
 
-	// Create ateom dir
-	ateomDir := ateompath.AteomPath(*podNamespace, *podName)
-	if err := os.MkdirAll(ateomDir, 0o700); err != nil {
-		return fmt.Errorf("in os.MkdirAll(%q): %w", ateomDir, err)
+	// Create base ateom dir
+	if err := os.MkdirAll(ateompath.BasePath, 0o700); err != nil {
+		return fmt.Errorf("in os.MkdirAll(%q): %w", ateompath.BasePath, err)
 	}
 
-	// No child process reaper needed — runc manages its own child processes.
-	// No network namespace manipulation needed — regular containers use pod
-	// networking directly (unlike gVisor which hijacks eth0).
-
-	// Clean up any old socket.
-	sockPath := ateompath.AteomSocketPath(*podNamespace, *podName)
+	// Use well-known socket path so the atelet can find us regardless of
+	// which worker pod is being targeted (CRIU mode runs one ateom per node).
+	sockPath := filepath.Join(ateompath.BasePath, "ateom-criu.sock")
 	if err := os.RemoveAll(sockPath); err != nil {
 		return fmt.Errorf("while removing %q: %w", sockPath, err)
 	}

@@ -733,8 +733,19 @@ func (d *AteomDialer) DialAteomPod(ctx context.Context, namespace, name string) 
 		return connAny.(*grpc.ClientConn), nil
 	}
 
+	// Try per-pod socket (gVisor mode: each worker pod runs its own ateom)
+	sockPath := ateompath.AteomSocketPath(namespace, name)
+	if _, err := os.Stat(sockPath); err != nil {
+		// Fall back to shared ateom-criu socket (CRIU mode: one ateom per node)
+		criuSockPath := filepath.Join(ateompath.BasePath, "ateom-criu.sock")
+		if _, criuErr := os.Stat(criuSockPath); criuErr == nil {
+			slog.InfoContext(ctx, "Using shared ateom-criu socket", slog.String("path", criuSockPath))
+			sockPath = criuSockPath
+		}
+	}
+
 	conn, err := grpc.NewClient(
-		"unix://"+ateompath.AteomSocketPath(namespace, name),
+		"unix://"+sockPath,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 	)
